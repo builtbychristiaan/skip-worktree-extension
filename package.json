@@ -2,7 +2,7 @@
   "name": "skip-worktree",
   "displayName": "Skip Worktree",
   "description": "Skip or unskip tracked files with git update-index --skip-worktree, and manage all skipped files from the sidebar, status bar, or command palette.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "christiaan-du-preez",
   "icon": "images/icon.png",
   "engines": {
