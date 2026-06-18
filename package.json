@@ -1,0 +1,54 @@
+{
+  "name": "skip-worktree",
+  "displayName": "Skip Worktree",
+  "description": "Right-click files in the explorer to skip or unskip them with git update-index --skip-worktree",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "skipWorktree.skipFile",
+        "title": "Skip File",
+        "category": "Git Skip Worktree"
+      },
+      {
+        "command": "skipWorktree.unskipFile",
+        "title": "Unskip File",
+        "category": "Git Skip Worktree"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "skipWorktree.skipFile",
+          "when": "explorerResourceIsFolder == false",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "skipWorktree.unskipFile",
+          "when": "explorerResourceIsFolder == false",
+          "group": "7_modification@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.5.0"
+  }
+}
