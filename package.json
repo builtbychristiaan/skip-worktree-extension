@@ -1,17 +1,38 @@
 {
   "name": "skip-worktree",
   "displayName": "Skip Worktree",
-  "description": "Right-click files in the explorer to skip or unskip them with git update-index --skip-worktree",
-  "version": "0.0.1",
-  "publisher": "local",
+  "description": "Skip or unskip tracked files with git update-index --skip-worktree, and manage all skipped files from the sidebar, status bar, or command palette.",
+  "version": "0.1.1",
+  "publisher": "christiaan-du-preez",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "SCM Providers"
   ],
+  "keywords": [
+    "git",
+    "skip-worktree",
+    "source control",
+    "scm",
+    "local changes",
+    "config"
+  ],
+  "galleryBanner": {
+    "color": "#1e3a5f",
+    "theme": "dark"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Christiaan-code/skip-worktree-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/Christiaan-code/skip-worktree-extension/issues"
+  },
+  "homepage": "https://github.com/Christiaan-code/skip-worktree-extension#readme",
   "contributes": {
     "commands": [
       {
@@ -23,6 +44,60 @@
         "command": "skipWorktree.unskipFile",
         "title": "Unskip File",
         "category": "Git Skip Worktree"
+      },
+      {
+        "command": "skipWorktree.showSkippedFiles",
+        "title": "Show Skipped Files",
+        "category": "Git Skip Worktree",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "skipWorktree.unskipAll",
+        "title": "Unskip All Skipped Files",
+        "category": "Git Skip Worktree",
+        "icon": "$(close)"
+      },
+      {
+        "command": "skipWorktree.refresh",
+        "title": "Refresh",
+        "category": "Git Skip Worktree",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "skipWorktree.openSkippedFile",
+        "title": "Open File",
+        "category": "Git Skip Worktree",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "skipWorktree.unskipFromTree",
+        "title": "Unskip",
+        "category": "Git Skip Worktree",
+        "icon": "$(close)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "skipWorktree",
+          "title": "Skip Worktree",
+          "icon": "$(eye-closed)"
+        }
+      ]
+    },
+    "views": {
+      "skipWorktree": [
+        {
+          "id": "skipWorktree.skippedFiles",
+          "name": "Skipped Files",
+          "when": "workspaceFolderCount != 0"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "skipWorktree.skippedFiles",
+        "contents": "No files are currently marked with skip-worktree.\n\nRight-click a tracked file in the explorer and choose **Skip File**, or run **Git Skip Worktree: Show Skipped Files** from the command palette."
       }
     ],
     "menus": {
@@ -37,18 +112,55 @@
           "when": "explorerResourceIsFolder == false",
           "group": "7_modification@2"
         }
+      ],
+      "view/title": [
+        {
+          "command": "skipWorktree.refresh",
+          "when": "view == skipWorktree.skippedFiles",
+          "group": "navigation"
+        },
+        {
+          "command": "skipWorktree.showSkippedFiles",
+          "when": "view == skipWorktree.skippedFiles",
+          "group": "navigation"
+        },
+        {
+          "command": "skipWorktree.unskipAll",
+          "when": "view == skipWorktree.skippedFiles",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "skipWorktree.unskipFromTree",
+          "when": "view == skipWorktree.skippedFiles && viewItem == skippedFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "skipWorktree.openSkippedFile",
+          "when": "view == skipWorktree.skippedFiles && viewItem == skippedFile",
+          "group": "1_navigation@1"
+        },
+        {
+          "command": "skipWorktree.unskipFromTree",
+          "when": "view == skipWorktree.skippedFiles && viewItem == skippedFile",
+          "group": "1_modification@1"
+        }
       ]
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.9.2",
     "typescript": "^5.5.0"
-  }
+  },
+  "license": "MIT"
 }
