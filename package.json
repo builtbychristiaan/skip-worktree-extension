@@ -2,7 +2,7 @@
   "name": "skip-worktree",
   "displayName": "Skip Worktree",
   "description": "Skip or unskip tracked files with git update-index --skip-worktree, and manage all skipped files from the sidebar, status bar, or command palette.",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "publisher": "christiaan-du-preez",
   "icon": "images/icon.png",
   "engines": {
@@ -74,6 +74,18 @@
         "title": "Unskip",
         "category": "Git Skip Worktree",
         "icon": "$(close)"
+      },
+      {
+        "command": "skipWorktree.skipFromTree",
+        "title": "Skip",
+        "category": "Git Skip Worktree",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "skipWorktree.skipFromScm",
+        "title": "Skip File",
+        "category": "Git Skip Worktree",
+        "icon": "$(eye-closed)"
       }
     ],
     "viewsContainers": {
@@ -91,6 +103,11 @@
           "id": "skipWorktree.skippedFiles",
           "name": "Skipped Files",
           "when": "workspaceFolderCount != 0"
+        },
+        {
+          "id": "skipWorktree.recentlySkippedFiles",
+          "name": "Recently Skipped Files",
+          "when": "workspaceFolderCount != 0"
         }
       ]
     },
@@ -98,6 +115,10 @@
       {
         "view": "skipWorktree.skippedFiles",
         "contents": "No files are currently marked with skip-worktree.\n\nRight-click a tracked file in the explorer and choose **Skip File**, or run **Git Skip Worktree: Show Skipped Files** from the command palette."
+      },
+      {
+        "view": "skipWorktree.recentlySkippedFiles",
+        "contents": "Previously skipped files that are no longer skipped will appear here."
       }
     ],
     "menus": {
@@ -113,10 +134,22 @@
           "group": "7_modification@2"
         }
       ],
+      "scm/resourceState/context": [
+        {
+          "command": "skipWorktree.skipFromScm",
+          "when": "scmProvider == git && scmResourceGroup == workingTree",
+          "group": "inline@3"
+        }
+      ],
       "view/title": [
         {
           "command": "skipWorktree.refresh",
           "when": "view == skipWorktree.skippedFiles",
+          "group": "navigation"
+        },
+        {
+          "command": "skipWorktree.refresh",
+          "when": "view == skipWorktree.recentlySkippedFiles",
           "group": "navigation"
         },
         {
@@ -137,6 +170,11 @@
           "group": "inline@1"
         },
         {
+          "command": "skipWorktree.skipFromTree",
+          "when": "view == skipWorktree.recentlySkippedFiles && viewItem == recentlySkippedFile",
+          "group": "inline@1"
+        },
+        {
           "command": "skipWorktree.openSkippedFile",
           "when": "view == skipWorktree.skippedFiles && viewItem == skippedFile",
           "group": "1_navigation@1"
@@ -145,6 +183,11 @@
           "command": "skipWorktree.unskipFromTree",
           "when": "view == skipWorktree.skippedFiles && viewItem == skippedFile",
           "group": "1_modification@1"
+        },
+        {
+          "command": "skipWorktree.skipFromTree",
+          "when": "view == skipWorktree.recentlySkippedFiles && viewItem == recentlySkippedFile",
+          "group": "1_modification@1"
         }
       ]
     }
@@ -152,6 +195,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "test": "npm run compile && node --test test",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"

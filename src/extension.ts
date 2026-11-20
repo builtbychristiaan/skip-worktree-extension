@@ -2,8 +2,12 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getSkipWorktreeBlockReason, runGitSkipWorktree } from './git';
 import { SkippedFileEntry } from './types';
-import { SkippedFilesService } from './skippedFilesService';
-import { SkippedFilesTreeProvider, getEntryFromArgument } from './skippedFilesTree';
+import { entryUri, SkippedFilesService } from './skippedFilesService';
+import {
+  RecentlySkippedFilesTreeProvider,
+  SkippedFilesTreeProvider,
+  getEntryFromArgument,
+} from './skippedFilesTree';
 import {
   SkippedFilesStatusBar,
   openSkippedFile,
@@ -11,7 +15,11 @@ import {
   unskipFromTree,
 } from './skippedFilesUi';
 
-function getRelativePath(uri: vscode.Uri): { cwd: string; relativePath: string } | undefined {
+function getRelativePath(uri: vscode.Uri): {
+  cwd: string;
+  relativePath: string;
+  workspaceFolderName: string;
+} | undefined {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
   if (!workspaceFolder) {
     return undefined;
@@ -25,6 +33,7 @@ function getRelativePath(uri: vscode.Uri): { cwd: string; relativePath: string }
   return {
     cwd: workspaceFolder.uri.fsPath,
     relativePath: relativePath.split(path.sep).join('/'),
+    workspaceFolderName: workspaceFolder.name,
   };
 }
 
@@ -39,12 +48,14 @@ function getSelectedResources(
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const service = new SkippedFilesService();
-  const treeProvider = new SkippedFilesTreeProvider(service);
+  const service = new SkippedFilesService(context.workspaceState);
+  const recentTree = new RecentlySkippedFilesTreeProvider();
+  const treeProvider = new SkippedFilesTreeProvider(service, recentTree);
   const statusBar = new SkippedFilesStatusBar(service);
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('skipWorktree.skippedFiles', treeProvider)
+    vscode.window.registerTreeDataProvider('skipWorktree.skippedFiles', treeProvider),
+    vscode.window.registerTreeDataProvider('skipWorktree.recentlySkippedFiles', recentTree)
   );
 
   statusBar.register(context);
@@ -63,6 +74,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     const failures: string[] = [];
+    const skippedEntries: SkippedFileEntry[] = [];
     let successCount = 0;
 
     for (const resource of resources) {
@@ -84,6 +96,9 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await runGitSkipWorktree(resolved.cwd, resolved.relativePath, skip);
         successCount += 1;
+        if (skip) {
+          skippedEntries.push(resolved);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failures.push(`${resolved.relativePath}: ${message}`);
@@ -93,6 +108,14 @@ export function activate(context: vscode.ExtensionContext): void {
     const action = skip ? 'skipped' : 'unskipped';
 
     if (successCount > 0) {
+      if (skippedEntries.length > 0) {
+        try {
+          await service.recordSkipped(skippedEntries, true);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          void vscode.window.showErrorMessage(`Failed to save recently skipped files: ${message}`);
+        }
+      }
       service.refresh();
       const label =
         successCount === 1
@@ -118,6 +141,16 @@ export function activate(context: vscode.ExtensionContext): void {
       'skipWorktree.unskipFile',
       (uri: vscode.Uri, uris?: vscode.Uri[]) =>
         updateSkipWorktree(getSelectedResources(uri, uris), false)
+    ),
+    vscode.commands.registerCommand(
+      'skipWorktree.skipFromScm',
+      (...resources: vscode.SourceControlResourceState[]) => {
+        if (resources.some((resource) => !resource || !(resource.resourceUri instanceof vscode.Uri))) {
+          void vscode.window.showWarningMessage('Select valid source control files to skip.');
+          return;
+        }
+        return updateSkipWorktree(resources.map((resource) => resource.resourceUri), true);
+      }
     ),
     vscode.commands.registerCommand('skipWorktree.showSkippedFiles', () =>
       showSkippedFilesQuickPick(service)
@@ -146,6 +179,17 @@ export function activate(context: vscode.ExtensionContext): void {
         if (entry) {
           return unskipFromTree(service, entry);
         }
+      }
+    ),
+    vscode.commands.registerCommand(
+      'skipWorktree.skipFromTree',
+      (arg?: vscode.TreeItem | SkippedFileEntry) => {
+        const entry = arg ? getEntryFromArgument(arg) : undefined;
+        if (!entry) {
+          void vscode.window.showWarningMessage('No file selected.');
+          return;
+        }
+        return updateSkipWorktree([entryUri(entry)], true);
       }
     ),
     vscode.workspace.onDidChangeWorkspaceFolders(refreshAll)

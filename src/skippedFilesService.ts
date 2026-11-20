@@ -5,6 +5,12 @@ import { SkippedFileEntry, UnskipResult } from './types';
 export class SkippedFilesService {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;
+  private recentEntries: SkippedFileEntry[];
+  private historyUpdate: Promise<void> = Promise.resolve();
+
+  constructor(private readonly workspaceState: vscode.Memento) {
+    this.recentEntries = workspaceState.get<SkippedFileEntry[]>('recentlySkippedFiles', []);
+  }
 
   refresh(): void {
     this._onDidChange.fire();
@@ -39,6 +45,43 @@ export class SkippedFilesService {
     });
 
     return entries;
+  }
+
+  recordSkipped(entries: SkippedFileEntry[], moveToFront: boolean): Promise<void> {
+    const update = this.historyUpdate.then(() => this.writeSkipped(entries, moveToFront));
+    this.historyUpdate = update.then(() => undefined, () => undefined);
+    return update;
+  }
+
+  private async writeSkipped(entries: SkippedFileEntry[], moveToFront: boolean): Promise<void> {
+    const uniqueEntries = [...new Map(entries.map((entry) => [entryKey(entry), entry])).values()];
+    const existingKeys = new Set(this.recentEntries.map(entryKey));
+    const newEntries = moveToFront
+      ? uniqueEntries
+      : uniqueEntries.filter((entry) => !existingKeys.has(entryKey(entry)));
+
+    if (newEntries.length === 0) {
+      return;
+    }
+
+    const replacedKeys = new Set(newEntries.map(entryKey));
+    const updatedEntries = [
+      ...newEntries,
+      ...this.recentEntries.filter((entry) => !replacedKeys.has(entryKey(entry))),
+    ];
+    await this.workspaceState.update('recentlySkippedFiles', updatedEntries);
+    this.recentEntries = updatedEntries;
+  }
+
+  listRecentlySkipped(currentEntries: SkippedFileEntry[]): SkippedFileEntry[] {
+    const currentKeys = new Set(currentEntries.map(entryKey));
+    const folders = new Map(
+      (vscode.workspace.workspaceFolders ?? []).map((folder) => [folder.uri.fsPath, folder.name])
+    );
+
+    return this.recentEntries
+      .filter((entry) => folders.has(entry.cwd) && !currentKeys.has(entryKey(entry)))
+      .map((entry) => ({ ...entry, workspaceFolderName: folders.get(entry.cwd)! }));
   }
 
   async unskip(entries: SkippedFileEntry[]): Promise<UnskipResult> {
@@ -96,6 +139,10 @@ export class SkippedFilesService {
       );
     }
   }
+}
+
+export function entryKey(entry: SkippedFileEntry): string {
+  return JSON.stringify([entry.cwd, entry.relativePath]);
 }
 
 export function entryUri(entry: SkippedFileEntry): vscode.Uri {

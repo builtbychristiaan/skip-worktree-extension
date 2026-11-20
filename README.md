@@ -2,7 +2,7 @@
 
 **Manage Git skip-worktree flags without leaving VS Code.**
 
-Skip Worktree wraps `git update-index --skip-worktree` in a familiar UI: Explorer context menus, a dedicated sidebar, a status bar indicator, and a command palette quick pick. Keep local edits to tracked config files without them showing up in `git status`—and see every skipped file in one place when you need to undo it.
+Skip Worktree wraps `git update-index --skip-worktree` in a familiar UI: Explorer context menus, Source Control actions, a dedicated sidebar, a status bar indicator, and a command palette quick pick. Keep local edits to tracked config files without them showing up in `git status`—and see every skipped file in one place when you need to undo it.
 
 ---
 
@@ -27,10 +27,12 @@ Skip Worktree makes that workflow discoverable and reversible.
 ## Features
 
 - **Skip / unskip from Explorer** — Right-click any tracked file and choose **Skip File** or **Unskip File**. Multi-select is supported.
+- **Skip from Source Control** — Use the inline **Skip File** button on a Git working-tree change. Untracked files cannot be skipped.
 - **Skipped Files sidebar** — Activity bar view lists every skip-worktree file in the workspace. Open, unskip inline, refresh, or unskip all from the toolbar.
+- **Recently Skipped Files** — The sidebar remembers files observed while skipped and shows them after they are unskipped. Use the inline **Skip** button to skip one again. History is saved per workspace; refresh to pick up Git changes made outside the extension.
 - **Status bar** — Shows `No skipped files` or a live count. Click to open the quick pick manager.
 - **Command palette quick pick** — Search skipped files, open one, unskip selected, or unskip all with confirmation.
-- **Multi-root workspaces** — Files are grouped by workspace folder when you have more than one root open.
+- **Multi-root workspaces** — Skipped files are grouped by workspace folder; recently skipped files show their folder name.
 - **Safe unskip** — Bulk unskip asks for confirmation so Git starts tracking local changes again only when you mean it.
 
 ---
@@ -46,7 +48,7 @@ Search for **Skip Worktree** in the VS Code Extensions view, or install from the
 ```bash
 npm install
 npm run package
-code --install-extension skip-worktree-0.1.1.vsix
+code --install-extension skip-worktree-0.2.1.vsix
 ```
 
 ### From source (development)
@@ -61,16 +63,25 @@ code --install-extension skip-worktree-0.1.1.vsix
 
 ### Skip a file
 
-1. Right-click a tracked file in the **Explorer**.
-2. Choose **Skip File** (category: *Git Skip Worktree*).
+- **Explorer:** Right-click a tracked file → **Skip File**.
+- **Source Control:** Hover over a tracked file under Git **Changes** → click the **Skip File** (eye-closed) icon next to the stage action.
+- **Sidebar:** Under **Recently Skipped Files**, click the **Skip** icon on a row to skip that file again.
 
-Git marks the file with skip-worktree. Local edits stay on disk but no longer appear in source control.
+Git marks the file with skip-worktree. Local edits stay on disk, and Git stops reporting unstaged changes; any changes already staged remain staged.
+The Source Control action appears on working-tree changes, including untracked files when Git mixes them into the Changes list. Untracked files cannot be skipped.
+
+### Recently skipped files
+
+The **Recently Skipped Files** section shows files the extension has observed as skipped that are no longer skipped. Click a file to open it, or use its **Skip** icon to mark it again. Currently skipped files appear only in **Skipped Files**.
+
+History is saved per workspace. Use **Refresh** to pick up Git changes made outside the extension; a file skipped and unskipped externally between refreshes cannot be recorded.
 
 ### Manage skipped files
 
 | Where | What you can do |
 | --- | --- |
-| **Activity bar → Skip Worktree** | Browse all skipped files; click to open; inline **Unskip**; toolbar refresh / list / unskip all |
+| **Activity bar → Skip Worktree** | Browse skipped and recently skipped files; click to open; inline **Skip** / **Unskip**; toolbar refresh / list / unskip all |
+| **Source Control → Changes** | Skip a tracked working-tree file using its inline action |
 | **Status bar** (`eye-closed` icon) | Click to open the quick pick |
 | **Command palette** | Run **Git Skip Worktree: Show Skipped Files** |
 
@@ -94,6 +105,7 @@ Git marks the file with skip-worktree. Local edits stay on disk but no longer ap
 | `Git Skip Worktree: Refresh` | Reload the skipped-files list |
 | `Git Skip Worktree: Open File` | Open a skipped file from the sidebar |
 | `Git Skip Worktree: Unskip` | Unskip a single file from the sidebar |
+| `Git Skip Worktree: Skip` | Skip a recently skipped file from the sidebar |
 
 ---
 
@@ -110,6 +122,7 @@ Git marks the file with skip-worktree. Local edits stay on disk but no longer ap
 ```bash
 npm install          # install dependencies
 npm run compile      # one-off TypeScript build
+npm test             # compile and run tests
 npm run watch        # rebuild on save
 npm run package      # create .vsix for distribution
 ```
