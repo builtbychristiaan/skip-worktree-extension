@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
   entryUri,
+  entryKey,
   formatEntryDescription,
   formatEntryLabel,
   isMultiRootWorkspace,
@@ -30,8 +31,12 @@ export class SkippedFilesTreeProvider
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private entries: SkippedFileEntry[] = [];
+  private reloadVersion = 0;
 
-  constructor(private readonly service: SkippedFilesService) {
+  constructor(
+    private readonly service: SkippedFilesService,
+    private readonly recentTree: RecentlySkippedFilesTreeProvider
+  ) {
     service.onDidChange(() => {
       void this.reload();
     });
@@ -42,8 +47,33 @@ export class SkippedFilesTreeProvider
   }
 
   async reload(): Promise<void> {
-    this.entries = await this.service.listAll();
-    this._onDidChangeTreeData.fire(undefined);
+    const version = ++this.reloadVersion;
+    try {
+      const entries = await this.service.listAll();
+      if (version !== this.reloadVersion) {
+        return;
+      }
+      try {
+        const previousKeys = new Set(this.entries.map(entryKey));
+        const newlySkipped = entries.filter(
+          (entry) => !previousKeys.has(entryKey(entry))
+        );
+        await this.service.recordSkipped(newlySkipped, true);
+        await this.service.recordSkipped(entries, false);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        void vscode.window.showErrorMessage(`Failed to save recently skipped files: ${message}`);
+      }
+      if (version !== this.reloadVersion) {
+        return;
+      }
+      this.entries = entries;
+      this.recentTree.setEntries(this.service.listRecentlySkipped(entries));
+      this._onDidChangeTreeData.fire(undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void vscode.window.showErrorMessage(`Failed to refresh skipped files: ${message}`);
+    }
   }
 
   getTreeItem(element: SkippedTreeElement): vscode.TreeItem {
@@ -112,6 +142,38 @@ export class SkippedFilesTreeProvider
       return undefined;
     }
     return element;
+  }
+}
+
+export class RecentlySkippedFilesTreeProvider
+  implements vscode.TreeDataProvider<SkippedFileEntry>
+{
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private entries: SkippedFileEntry[] = [];
+
+  setEntries(entries: SkippedFileEntry[]): void {
+    this.entries = entries;
+    this._onDidChangeTreeData.fire();
+  }
+
+  getTreeItem(entry: SkippedFileEntry): vscode.TreeItem {
+    const item = new vscode.TreeItem(formatEntryLabel(entry), vscode.TreeItemCollapsibleState.None);
+    item.resourceUri = entryUri(entry);
+    item.description = formatEntryDescription(entry);
+    item.contextValue = 'recentlySkippedFile';
+    item.iconPath = new vscode.ThemeIcon('file');
+    item.tooltip = entry.relativePath;
+    item.command = {
+      command: 'skipWorktree.openSkippedFile',
+      title: 'Open File',
+      arguments: [entry],
+    };
+    return item;
+  }
+
+  getChildren(): SkippedFileEntry[] {
+    return this.entries;
   }
 }
 

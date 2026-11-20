@@ -28,6 +28,7 @@ Skip Worktree makes that workflow discoverable and reversible.
 
 - **Skip / unskip from Explorer** — Right-click any tracked file and choose **Skip File** or **Unskip File**. Multi-select is supported.
 - **Skipped Files sidebar** — Activity bar view lists every skip-worktree file in the workspace. Open, unskip inline, refresh, or unskip all from the toolbar.
+- **Recently Skipped Files** — The sidebar remembers files observed while skipped and shows them after they are unskipped. Use the inline **Skip** button to skip one again. History is saved per workspace; refresh to pick up Git changes made outside the extension.
 - **Status bar** — Shows `No skipped files` or a live count. Click to open the quick pick manager.
 - **Command palette quick pick** — Search skipped files, open one, unskip selected, or unskip all with confirmation.
 - **Multi-root workspaces** — Files are grouped by workspace folder when you have more than one root open.
@@ -65,6 +66,7 @@ code --install-extension skip-worktree-0.1.1.vsix
 2. Choose **Skip File** (category: *Git Skip Worktree*).
 
 Git marks the file with skip-worktree. Local edits stay on disk but no longer appear in source control.
+Previously skipped files can also be skipped again using the **Skip** button in the sidebar's **Recently Skipped Files** section.
 
 ### Manage skipped files
 
@@ -94,6 +96,7 @@ Git marks the file with skip-worktree. Local edits stay on disk but no longer ap
 | `Git Skip Worktree: Refresh` | Reload the skipped-files list |
 | `Git Skip Worktree: Open File` | Open a skipped file from the sidebar |
 | `Git Skip Worktree: Unskip` | Unskip a single file from the sidebar |
+| `Git Skip Worktree: Skip` | Skip a recently skipped file from the sidebar |
 
 ---
 
