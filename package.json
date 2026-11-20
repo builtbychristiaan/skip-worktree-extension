@@ -2,7 +2,7 @@
   "name": "skip-worktree",
   "displayName": "Skip Worktree",
   "description": "Skip or unskip tracked files with git update-index --skip-worktree, and manage all skipped files from the sidebar, status bar, or command palette.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "christiaan-du-preez",
   "icon": "images/icon.png",
   "engines": {
@@ -80,6 +80,12 @@
         "title": "Skip",
         "category": "Git Skip Worktree",
         "icon": "$(eye-closed)"
+      },
+      {
+        "command": "skipWorktree.skipFromScm",
+        "title": "Skip File",
+        "category": "Git Skip Worktree",
+        "icon": "$(eye-closed)"
       }
     ],
     "viewsContainers": {
@@ -126,6 +132,13 @@
           "command": "skipWorktree.unskipFile",
           "when": "explorerResourceIsFolder == false",
           "group": "7_modification@2"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "skipWorktree.skipFromScm",
+          "when": "scmProvider == git && scmResourceGroup == workingTree",
+          "group": "inline@3"
         }
       ],
       "view/title": [

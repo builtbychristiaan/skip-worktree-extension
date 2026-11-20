@@ -142,6 +142,16 @@ export function activate(context: vscode.ExtensionContext): void {
       (uri: vscode.Uri, uris?: vscode.Uri[]) =>
         updateSkipWorktree(getSelectedResources(uri, uris), false)
     ),
+    vscode.commands.registerCommand(
+      'skipWorktree.skipFromScm',
+      (...resources: vscode.SourceControlResourceState[]) => {
+        if (resources.some((resource) => !resource || !(resource.resourceUri instanceof vscode.Uri))) {
+          void vscode.window.showWarningMessage('Select valid source control files to skip.');
+          return;
+        }
+        return updateSkipWorktree(resources.map((resource) => resource.resourceUri), true);
+      }
+    ),
     vscode.commands.registerCommand('skipWorktree.showSkippedFiles', () =>
       showSkippedFilesQuickPick(service)
     ),

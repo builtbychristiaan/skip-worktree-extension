@@ -31,7 +31,10 @@ const vscode = {
   TreeItemCollapsibleState: { None: 0, Expanded: 2 },
   StatusBarAlignment: { Left: 1 },
   ThemeIcon: class ThemeIcon {},
-  Uri: { file: (fsPath) => ({ fsPath }) },
+  Uri: class Uri {
+    constructor(fsPath) { this.fsPath = fsPath; }
+    static file(fsPath) { return new Uri(fsPath); }
+  },
   commands: {},
   workspace: { workspaceFolders: [] },
   window: { showErrorMessage: () => {} },
@@ -258,4 +261,61 @@ test('recent-file Skip action validates, skips, and refreshes the sidebar', asyn
   assert.equal(skipped, true);
   assert.deepEqual(recent.getChildren(), []);
   assert.equal(views.get('skipWorktree.skippedFiles').getChildren().length, 1);
+});
+
+test('Source Control action skips selected tracked files and reports untracked files', async () => {
+  Object.assign(git, originalGit);
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'skip-worktree-scm-test-'));
+  try {
+    execFileSync('git', ['init', '-q', cwd]);
+    for (const name of ['a.json', 'b.json', 'untracked.json']) {
+      fs.writeFileSync(path.join(cwd, name), '{}');
+    }
+    execFileSync('git', ['add', '--', 'a.json', 'b.json'], { cwd });
+
+    const folder = { uri: { fsPath: cwd }, name: 'Repo' };
+    const commands = new Map();
+    const views = new Map();
+    const errors = [];
+    const warnings = [];
+    let statusUpdated;
+    vscode.workspace.workspaceFolders = [folder];
+    vscode.workspace.getWorkspaceFolder = () => folder;
+    vscode.workspace.onDidChangeWorkspaceFolders = () => ({});
+    vscode.commands.registerCommand = (id, handler) => { commands.set(id, handler); return {}; };
+    vscode.window.createStatusBarItem = () => ({
+      show: () => { if (statusUpdated) { statusUpdated(); } },
+    });
+    vscode.window.registerTreeDataProvider = (id, provider) => { views.set(id, provider); return {}; };
+    vscode.window.showErrorMessage = (message) => errors.push(message);
+    vscode.window.showWarningMessage = (message) => warnings.push(message);
+    vscode.window.showInformationMessage = () => {};
+    const initialStatus = new Promise((resolve) => { statusUpdated = resolve; });
+    activate({ workspaceState: state(), subscriptions: [] });
+    const recent = views.get('skipWorktree.recentlySkippedFiles');
+    await Promise.all([initialStatus, new Promise((resolve) => recent.onDidChangeTreeData(resolve))]);
+
+    const menu = require('../package.json').contributes.menus['scm/resourceState/context'];
+    assert.ok(menu.some((item) =>
+      item.command === 'skipWorktree.skipFromScm' &&
+      item.when === 'scmProvider == git && scmResourceGroup == workingTree' &&
+      item.group.startsWith('inline')
+    ));
+    const skipFromScm = commands.get('skipWorktree.skipFromScm');
+    skipFromScm({ resourceUri: undefined });
+    assert.match(warnings[0], /valid source control files/);
+    const refreshed = new Promise((resolve) => recent.onDidChangeTreeData(resolve));
+    const updatedStatus = new Promise((resolve) => { statusUpdated = resolve; });
+    await skipFromScm(
+      { resourceUri: vscode.Uri.file(path.join(cwd, 'a.json')) },
+      { resourceUri: vscode.Uri.file(path.join(cwd, 'b.json')) },
+      { resourceUri: vscode.Uri.file(path.join(cwd, 'untracked.json')) }
+    );
+    await Promise.all([refreshed, updatedStatus]);
+    assert.deepEqual(await git.listSkippedFiles(cwd), ['a.json', 'b.json']);
+    assert.match(errors[0], /untracked\.json: file is not tracked by git/);
+    assert.equal(views.get('skipWorktree.skippedFiles').getChildren().length, 2);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
 });
